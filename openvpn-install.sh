@@ -32,13 +32,6 @@ if [[ -e /etc/debian_version ]]; then
 		echo "However, if you're using Debian unstable/testing, or Ubuntu beta,"
 		echo "then you can continue, a recent version of OpenVPN is available on these."
 		echo "Keep in mind they are not supported, though."
-		while [[ $CONTINUE != "y" && $CONTINUE != "n" ]]; do
-			read -p "Continue ? [y/n]: " -e CONTINUE
-		done
-		if [[ "$CONTINUE" = "n" ]]; then
-			echo "Ok, bye !"
-			exit 4
-		fi
 	fi
 elif [[ -e /etc/centos-release || -e /etc/redhat-release ]]; then
 	OS=centos
@@ -94,13 +87,14 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 		echo "   2) Revoke existing user cert"
 		echo "   3) Remove OpenVPN"
 		echo "   4) Exit"
-		read -p "Select an option [1-4]: " option
+		option=1
 		case $option in
 			1)
 			echo ""
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
-			read -p "Client name: " -e -i client CLIENT
+			CLIENT="client_$RANDOM"
+			echo "Using client name: $CLIENT"
 			cd /etc/openvpn/easy-rsa/
 			./easyrsa build-client-full $CLIENT nopass
 			# Generates the custom client.ovpn
@@ -194,16 +188,16 @@ else
 	echo "I need to know the IPv4 address of the network interface you want OpenVPN listening to."
 	echo "If your server is running behind a NAT, (e.g. LowEndSpirit, Scaleway) leave the IP address as it is. (local/private IP)"
 	echo "Otherwise, it should be your public IPv4 address."
-	read -p "IP address: " -e -i $IP IP
+	echo "Using IP: $IP"
 	echo ""
 	echo "What port do you want for OpenVPN?"
-	read -p "Port: " -e -i 1194 PORT
+	PORT=1194
+	echo "Using port: $PORT"
 	echo ""
 	echo "What protocol do you want for OpenVPN?"
 	echo "Unless UDP is blocked, you should not use TCP (unnecessarily slower)"
-	while [[ $PROTOCOL != "UDP" && $PROTOCOL != "TCP" ]]; do
-		read -p "Protocol [UDP/TCP]: " -e -i UDP PROTOCOL
-	done
+	PROTOCOL=UDP
+	echo "Using protocol: $PROTOCOL"
 	echo ""
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers (/etc/resolv.conf)"
@@ -211,9 +205,8 @@ else
 	echo "   3) DNS.WATCH (Germany)"
 	echo "   4) OpenDNS (Anycast: worldwide)"
 	echo "   5) Google (Anycast: worldwide)"
-	while [[ $DNS != "1" && $DNS != "2" && $DNS != "3" && $DNS != "4" && $DNS != "5" ]]; do
-		read -p "DNS [1-5]: " -e -i 2 DNS
-	done
+	DNS=5
+	echo "Using DNS: $DNS"
 	echo ""
 	echo "See https://github.com/Angristan/OpenVPN-install#encryption to learn more about "
 	echo "the encryption in OpenVPN and the choices I made in this script."
@@ -230,9 +223,8 @@ else
 	echo "   5) CAMELLIA-192-CBC"
 	echo "   6) CAMELLIA-256-CBC"
 	echo "   7) SEED-CBC"
-	while [[ $CIPHER != "1" && $CIPHER != "2" && $CIPHER != "3" && $CIPHER != "4" && $CIPHER != "5" && $CIPHER != "6" && $CIPHER != "7" ]]; do
-		read -p "Cipher [1-7]: " -e -i 1 CIPHER
-	done
+	CIPHER=1
+	echo "Using cipher: $CIPHER"
 	case $CIPHER in
 		1)
 		CIPHER="cipher AES-128-CBC"
@@ -261,9 +253,8 @@ else
 	echo "   1) 2048 bits (fastest)"
 	echo "   2) 3072 bits (recommended, best compromise)"
 	echo "   3) 4096 bits (most secure)"
-	while [[ $DH_KEY_SIZE != "1" && $DH_KEY_SIZE != "2" && $DH_KEY_SIZE != "3" ]]; do
-		read -p "DH key size [1-3]: " -e -i 2 DH_KEY_SIZE
-	done
+	DH_KEY_SIZE=2
+	echo "Using DH key-size: $DH_KEY_SIZE"
 	case $DH_KEY_SIZE in
 		1)
 		DH_KEY_SIZE="2048"
@@ -280,9 +271,8 @@ else
 	echo "   1) 2048 bits (fastest)"
 	echo "   2) 3072 bits (recommended, best compromise)"
 	echo "   3) 4096 bits (most secure)"
-	while [[ $RSA_KEY_SIZE != "1" && $RSA_KEY_SIZE != "2" && $RSA_KEY_SIZE != "3" ]]; do
-		read -p "DH key size [1-3]: " -e -i 2 RSA_KEY_SIZE
-	done
+	RSA_KEY_SIZE=2
+	echo "Using RSA key-size: $RSA_KEY_SIZE"
 	case $RSA_KEY_SIZE in
 		1)
 		RSA_KEY_SIZE="2048"
@@ -296,13 +286,10 @@ else
 	esac
 	echo ""
 	echo "Finally, tell me a name for the client certificate and configuration"
-	while [[ $CLIENT = "" ]]; do
-		echo "Please, use one word only, no special characters"
-		read -p "Client name: " -e -i client CLIENT
-	done
+	CLIENT=client
+	echo "Using client name: $CLIENT"
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
-	read -n1 -r -p "Press any key to continue..."
 
 	if [[ "$OS" = 'debian' ]]; then
 		apt-get install ca-certificates -y
@@ -345,13 +332,6 @@ else
 		echo "Not doing that could cause problems between dependencies, or missing files in repositories."
 		echo ""
 		echo "Continuing will update your installed packages and install needed ones."
-		while [[ $CONTINUE != "y" && $CONTINUE != "n" ]]; do
-			read -p "Continue ? [y/n]: " -e -i y CONTINUE
-		done
-		if [[ "$CONTINUE" = "n" ]]; then
-			echo "Ok, bye !"
-			exit 4
-		fi
 		
 		if [[ "$OS" = 'arch' ]]; then
 		# Install rc.local
@@ -560,7 +540,6 @@ verb 3" >> /etc/openvpn/server.conf
                 echo "If your server is NATed (e.g. LowEndSpirit, Scaleway, or behind a router),"
                 echo "then I need to know the address that can be used to access it from outside."
                 echo "If that's not the case, just ignore this and leave the next field blank"
-                read -p "External IP or domain name: " -e USEREXTERNALIP
 		if [[ "$USEREXTERNALIP" != "" ]]; then
 			IP=$USEREXTERNALIP
 		fi
